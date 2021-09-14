@@ -2,7 +2,7 @@
 ---@Author: Kanri
 ---@Date: 2021-09-12 20:52:50
 ---@LastEditors: Kanri
----@LastEditTime: 2021-09-12 22:31:13
+---@LastEditTime: 2021-09-13 20:23:45
 ---@Description: Lexer
 
 local sub = string.sub
@@ -47,35 +47,38 @@ t.lexer = {
 
 -- @param sourcecode string
 function t.new_lexer(source_code)
-   t.lexer.source_code = source_code
-   t.lexer.line_num = 0
-   t.lexer.next_token = ''
-   t.lexer.next_token_type = 0
-   t.lexer.next_token_line_num = 0
+    t.lexer.source_code = source_code
+    t.lexer.index = 1
+    t.lexer.line_num = 0
+    t.lexer.next_token = ''
+    t.lexer.next_token_type = 0
+    t.lexer.next_token_line_num = 0
 end
 
-function t.get_line_num()
-    return t.lexer.line_num
-end
-
+-- @param n int
 function t.skip_source_code(n)
-    t.lexer.source_code = sub(lexer.source_code, n+1)
+    t.lexer.index = t.lexer.index + n
+end
+
+-- @param n int
+function t.get_source_code(n)
+    return sub(t.lexer.source_code, t.lexer.index, t.lexer.index + n - 1)
 end
 
 function t.is_ignore()
     local is_ignore = false
-    while #t.lexer.source_code > 0 do
-        local c1 = sub(t.lexer.source_code,1,1)
-        local c2 = sub(t.lexer.source_code,1,2)
+    while t.lexer.index <= 41 do
+        local c1 = t.get_source_code(1)
+        local c2 = t.get_source_code(2)
         if c1 == ' ' or c1 == '\t' or c1 == '\n' or c1 == '\v' or c1 == '\f' or c1 == '\r' then
-            t.lexer.source_code = t.skip_source_code(1)
+            t.skip_source_code(1)
             is_ignore = true
         elseif c1 == '\r' or c1 == '\n' then
-            t.lexer.source_code = t.skip_source_code(1)
+            t.skip_source_code(1)
             t.lexer.line_num = t.lexer.line_num + 1
             is_ignore = true
         elseif c2 == '\r\n' or c2 == '\n\r' then
-            t.lexer.source_code = t.skip_source_code(2)
+            t.skip_source_code(2)
             t.lexer.line_num = t.lexer.line_num + 1
             is_ignore = true
         else
@@ -98,36 +101,77 @@ function t.get_next_token()
 end
 
 function t.match_token()
-    if t.lexer.is_ignore() then
-        return t.lexer.line_num, t.TOKEN_IGNORED, "Ignored"
+    if t.is_ignore() then
+        return t.lexer.line_num, t.TOKEN_IGNORED, 'Ignored'
     end
-    if #t.lexer.source_code == 0 then
+    if t.lexer.index >= #t.lexer.source_code then
         return t.lexer.line_num, t.TOKEN_EOF, t.token_name_map[t.TOKEN_EOF]
     end
-    local c1 = sub(t.lexer.source_code,1,1)
-    local c2 = sub(t.lexer.source_code,1,2)
+    local c1 = t.get_source_code(1)
+    local c2 = t.get_source_code(2)
     if c1 == '$' then
-        t.lexer.skip_source_code(1)
+        t.skip_source_code(1)
         return t.lexer.line_num, t.TOKEN_VAR_PREFIX, c1
     elseif c1 == '(' then
-        t.lexer.skip_source_code(1)
+        t.skip_source_code(1)
         return t.lexer.line_num, t.TOKEN_LEFT_PAREN, c1
     elseif c1 == ')' then
-        t.lexer.skip_source_code(1)
+        t.skip_source_code(1)
         return t.lexer.line_num, t.TOKEN_RIGHT_PAREN, c1
     elseif c1 == '=' then
-        t.lexer.skip_source_code(1)
+        t.skip_source_code(1)
         return t.lexer.line_num, t.TOKEN_EQUAL, c1
-    elseif c2 == '' then
-        t.lexer.skip_source_code(2)
+    elseif c2 == '""' then
+        t.skip_source_code(2)
         return t.lexer.line_num, t.TOKEN_DUOQUOTE, c2
     elseif c1 == '"' then
-        t.lexer.skip_source_code(1)
+        t.skip_source_code(1)
         return t.lexer.line_num, t.TOKEN_DUOQUOTE, c1
+    elseif c1 == "_" or t.is_letter(c1) then
+        local start = t.lexer.index
+        local finish = start
+        while (t.lexer.index <= #t.lexer.source_code)
+        do
+            finish = t.lexer.index
+            local c = t.get_source_code(1)
+            if c == "_" or t.is_letter(c) then
+                t.skip_source_code(1)
+            else
+                break
+            end
+        end
+        return t.lexer.line_num, t.TOKEN_DUOQUOTE, sub(t.lexer.source_code, start, finish-1)
     end
+    t.skip_source_code(1)
     -- @todo 错误抛出
 end
 
 function t.is_letter(c)
     return c >= 'a' and c <= 'z' or c >= 'A' and c <= 'Z'
 end
+
+local source_code=[[$a = "pen pineapple apple pen."
+print($a)]]
+t.new_lexer(source_code)
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+t.match_token()
+_, _, xxx = t.match_token()
+print(xxx)
