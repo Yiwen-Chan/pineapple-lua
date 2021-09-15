@@ -2,42 +2,42 @@
 ---@Author: Kanri
 ---@Date: 2021-09-12 20:52:50
 ---@LastEditors: Kanri
----@LastEditTime: 2021-09-14 11:47:29
+---@LastEditTime: 2021-09-15 14:21:36
 ---@Description: Lexer
 
 local sub = string.sub
 
-t = {}
+const = {}
 
-t.TOKEN_EOF = 0
-t.TOKEN_VAR_PREFIX = 1
-t.TOKEN_LEFT_PAREN = 2
-t.TOKEN_RIGHT_PAREN = 3
-t.TOKEN_EQUAL = 4
-t.TOKEN_QUOTE = 5
-t.TOKEN_DUOQUOTE = 6
-t.TOKEN_NAME = 7
-t.TOKEN_PRINT = 8
-t.TOKEN_IGNORED = 9
+consTOKEN_EOF = 0
+consTOKEN_VAR_PREFIX = 1
+consTOKEN_LEFT_PAREN = 2
+consTOKEN_RIGHT_PAREN = 3
+consTOKEN_EQUAL = 4
+consTOKEN_QUOTE = 5
+consTOKEN_DUOQUOTE = 6
+consTOKEN_NAME = 7
+consTOKEN_PRINT = 8
+consTOKEN_IGNORED = 9
 
-t.token_name_map = {
-    [t.TOKEN_EOF] = 'EOF',
-    [t.TOKEN_VAR_PREFIX] = '$',
-    [t.TOKEN_LEFT_PAREN] = '(',
-    [t.TOKEN_RIGHT_PAREN] = ')',
-    [t.TOKEN_EQUAL] = '=',
-    [t.TOKEN_QUOTE] = '"',
-    [t.TOKEN_DUOQUOTE] = '""',
-    [t.TOKEN_NAME] = 'Name',
-    [t.TOKEN_PRINT] = 'print',
-    [t.TOKEN_IGNORED] = 'Ignored'
+constoken_name_map = {
+    [consTOKEN_EOF] = 'EOF',
+    [consTOKEN_VAR_PREFIX] = '$',
+    [consTOKEN_LEFT_PAREN] = '(',
+    [consTOKEN_RIGHT_PAREN] = ')',
+    [consTOKEN_EQUAL] = '=',
+    [consTOKEN_QUOTE] = '"',
+    [consTOKEN_DUOQUOTE] = '""',
+    [consTOKEN_NAME] = 'Name',
+    [consTOKEN_PRINT] = 'print',
+    [consTOKEN_IGNORED] = 'Ignored'
 }
 
-t.keywords = {
-    ['print'] = t.TOKEN_PRINT
+conskeywords = {
+    ['print'] = consTOKEN_PRINT
 }
 
-t.lexer = {
+lexer = {
     source_code = '',
     line_num = 0,
     next_token = '',
@@ -46,7 +46,7 @@ t.lexer = {
 }
 
 -- @param sourcecode string
-function t.lexer:new_lexer(source_code)
+function lexer:new_lexer(source_code)
     self.source_code = source_code
     self.index = 1
     self.line_num = 0
@@ -56,16 +56,16 @@ function t.lexer:new_lexer(source_code)
 end
 
 -- @param n int
-function t.lexer:skip_source_code(n)
+function lexer:skip_source_code(n)
     self.index = self.index + n
 end
 
 -- @param n int
-function t.lexer:get_source_code(n)
+function lexer:get_source_code(n)
     return sub(self.source_code, self.index, self.index + n - 1)
 end
 
-function t.lexer:is_ignore()
+function lexer:is_ignore()
     local is_ignore = false
     while self.index <= 41 do
         local c1 = self:get_source_code(1)
@@ -88,7 +88,7 @@ function t.lexer:is_ignore()
     return is_ignore
 end
 
-function t.lexer:get_next_token()
+function lexer:get_next_token()
     if (self.nextTokenLineNum > 0) then
         local token = self.next_token
         local token_type = self.next_token_type
@@ -100,33 +100,33 @@ function t.lexer:get_next_token()
     return self:match_token()
 end
 
-function t.lexer:match_token()
+function lexer:match_token()
     if self:is_ignore() then
-        return self.line_num, t.TOKEN_IGNORED, 'Ignored'
+        return self.line_num, const.TOKEN_IGNORED, 'Ignored'
     end
     if self.index >= #self.source_code then
-        return self.line_num, t.TOKEN_EOF, t.token_name_map[t.TOKEN_EOF]
+        return self.line_num, const.TOKEN_EOF, const.token_name_map[const.TOKEN_EOF]
     end
     local c1 = self:get_source_code(1)
     local c2 = self:get_source_code(2)
     if c1 == '$' then
         self:skip_source_code(1)
-        return self.line_num, t.TOKEN_VAR_PREFIX, c1
+        return self.line_num, const.TOKEN_VAR_PREFIX, c1
     elseif c1 == '(' then
         self:skip_source_code(1)
-        return self.line_num, t.TOKEN_LEFT_PAREN, c1
+        return self.line_num, const.TOKEN_LEFT_PAREN, c1
     elseif c1 == ')' then
         self:skip_source_code(1)
-        return self.line_num, t.TOKEN_RIGHT_PAREN, c1
+        return self.line_num, const.TOKEN_RIGHT_PAREN, c1
     elseif c1 == '=' then
         self:skip_source_code(1)
-        return self.line_num, t.TOKEN_EQUAL, c1
+        return self.line_num, const.TOKEN_EQUAL, c1
     elseif c2 == '""' then
         self:skip_source_code(2)
-        return self.line_num, t.TOKEN_DUOQUOTE, c2
+        return self.line_num, const.TOKEN_DUOQUOTE, c2
     elseif c1 == '"' then
         self:skip_source_code(1)
-        return self.line_num, t.TOKEN_DUOQUOTE, c1
+        return self.line_num, const.TOKEN_DUOQUOTE, c1
     elseif c1 == "_" or self:is_letter(c1) then
         local start = self.index
         local finish = start
@@ -140,35 +140,35 @@ function t.lexer:match_token()
                 break
             end
         end
-        return self.line_num, t.TOKEN_DUOQUOTE, sub(t.lexer.source_code, start, finish-1)
+        return self.line_num, const.TOKEN_DUOQUOTE, sub(lexer.source_code, start, finish-1)
     end
     self:skip_source_code(1)
     -- @todo 错误抛出
 end
 
-function t.lexer:is_letter()
+function lexer:is_letter()
     local c = self:get_source_code(1)
     return c >= 'a' and c <= 'z' or c >= 'A' and c <= 'Z'
 end
 
 local source_code=[[$a = "pen pineapple apple pen."
 print($a)]]
-t.lexer:new_lexer(source_code)
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-t.lexer:match_token()
-_, _, xxx = t.lexer:match_token()
+lexer:new_lexer(source_code)
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+lexer:match_token()
+_, _, xxx = lexer:match_token()
 print(xxx)
