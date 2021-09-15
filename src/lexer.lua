@@ -2,39 +2,39 @@
 ---@Author: Kanri
 ---@Date: 2021-09-12 20:52:50
 ---@LastEditors: Kanri
----@LastEditTime: 2021-09-15 14:21:36
+---@LastEditTime: 2021-09-15 14:24:21
 ---@Description: Lexer
 
 local sub = string.sub
 
 const = {}
 
-consTOKEN_EOF = 0
-consTOKEN_VAR_PREFIX = 1
-consTOKEN_LEFT_PAREN = 2
-consTOKEN_RIGHT_PAREN = 3
-consTOKEN_EQUAL = 4
-consTOKEN_QUOTE = 5
-consTOKEN_DUOQUOTE = 6
-consTOKEN_NAME = 7
-consTOKEN_PRINT = 8
-consTOKEN_IGNORED = 9
+const.TOKEN_EOF = 0
+const.TOKEN_VAR_PREFIX = 1
+const.TOKEN_LEFT_PAREN = 2
+const.TOKEN_RIGHT_PAREN = 3
+const.TOKEN_EQUAL = 4
+const.TOKEN_QUOTE = 5
+const.TOKEN_DUOQUOTE = 6
+const.TOKEN_NAME = 7
+const.TOKEN_PRINT = 8
+const.TOKEN_IGNORED = 9
 
-constoken_name_map = {
-    [consTOKEN_EOF] = 'EOF',
-    [consTOKEN_VAR_PREFIX] = '$',
-    [consTOKEN_LEFT_PAREN] = '(',
-    [consTOKEN_RIGHT_PAREN] = ')',
-    [consTOKEN_EQUAL] = '=',
-    [consTOKEN_QUOTE] = '"',
-    [consTOKEN_DUOQUOTE] = '""',
-    [consTOKEN_NAME] = 'Name',
-    [consTOKEN_PRINT] = 'print',
-    [consTOKEN_IGNORED] = 'Ignored'
+const.token_name_map = {
+    [const.TOKEN_EOF] = 'EOF',
+    [const.TOKEN_VAR_PREFIX] = '$',
+    [const.TOKEN_LEFT_PAREN] = '(',
+    [const.TOKEN_RIGHT_PAREN] = ')',
+    [const.TOKEN_EQUAL] = '=',
+    [const.TOKEN_QUOTE] = '"',
+    [const.TOKEN_DUOQUOTE] = '""',
+    [const.TOKEN_NAME] = 'Name',
+    [const.TOKEN_PRINT] = 'print',
+    [const.TOKEN_IGNORED] = 'Ignored'
 }
 
-conskeywords = {
-    ['print'] = consTOKEN_PRINT
+const.keywords = {
+    ['print'] = const.TOKEN_PRINT
 }
 
 lexer = {
