@@ -2,35 +2,54 @@
 ---@Author: Kanri
 ---@Date: 2021-09-12 20:52:50
 ---@LastEditors: Kanri
----@LastEditTime: 2021-09-15 14:24:21
+---@LastEditTime: 2021-09-17 20:05:39
 ---@Description: Lexer
 
+local insert = table.insert
 local sub = string.sub
 
-const = {}
+const = {
+    -- SPECIAL
+    ILLEGAL = 0,
+	EOF = 1,
+	COMMENT = 2,
+    -- LITERAL
+    IDENT = 10,
+    INT = 11,
+    FLOAT = 12,
+    IMAG = 13,
+    CHAR = 14,
+    STRING = 15,
+    -- OPERATOR
+    ADD = 20,
+    SUB = 21,
+    MUL = 22,
+    QUO = 23,
+    REM = 24,
 
-const.TOKEN_EOF = 0
-const.TOKEN_VAR_PREFIX = 1
-const.TOKEN_LEFT_PAREN = 2
-const.TOKEN_RIGHT_PAREN = 3
-const.TOKEN_EQUAL = 4
-const.TOKEN_QUOTE = 5
-const.TOKEN_DUOQUOTE = 6
-const.TOKEN_NAME = 7
-const.TOKEN_PRINT = 8
-const.TOKEN_IGNORED = 9
+    PRINT = 30
+}
 
-const.token_name_map = {
-    [const.TOKEN_EOF] = 'EOF',
-    [const.TOKEN_VAR_PREFIX] = '$',
-    [const.TOKEN_LEFT_PAREN] = '(',
-    [const.TOKEN_RIGHT_PAREN] = ')',
-    [const.TOKEN_EQUAL] = '=',
-    [const.TOKEN_QUOTE] = '"',
-    [const.TOKEN_DUOQUOTE] = '""',
-    [const.TOKEN_NAME] = 'Name',
-    [const.TOKEN_PRINT] = 'print',
-    [const.TOKEN_IGNORED] = 'Ignored'
+const.TOKENS = {
+    -- SPECIAL
+    [const.ILLEGAL] = 'ILLEGAL',
+    [const.EOF] = 'EOF',
+    [const.COMMENT] = 'COMMENT',
+    -- LITERAL
+    [const.IDENT] = 'IDENT',
+    [const.INT] = 'INT',
+    [const.FLOAT] = 'FLOAT',
+    [const.IMAG] = 'IMAG',
+    [const.CHAR] = 'CHAR',
+    [const.STRING] = 'STRING',
+    -- OPERATOR
+    [const.ADD] = '+',
+    [const.SUB] = '-',
+    [const.MUL] = '/',
+    [const.QUO] = '*',
+    [const.REM] = '%',
+
+    [const.PRINT] = 'print'
 }
 
 const.keywords = {
@@ -46,129 +65,117 @@ lexer = {
 }
 
 -- @param sourcecode string
-function lexer:new_lexer(source_code)
-    self.source_code = source_code
+function lexer:init(source_code)
+    self.src = source_code
+    self.len = #self.src
     self.index = 1
-    self.line_num = 0
-    self.next_token = ''
-    self.next_token_type = 0
-    self.next_token_line_num = 0
+    self.line = 1
 end
 
 -- @param n int
-function lexer:skip_source_code(n)
+function lexer:set_next_index(n)
     self.index = self.index + n
 end
 
 -- @param n int
-function lexer:get_source_code(n)
-    return sub(self.source_code, self.index, self.index + n - 1)
+function lexer:set_next_line(n)
+    self.line = self.line + n
 end
 
-function lexer:is_ignore()
-    local is_ignore = false
-    while self.index <= 41 do
-        local c1 = self:get_source_code(1)
-        local c2 = self:get_source_code(2)
-        if c1 == ' ' or c1 == '\t' or c1 == '\n' or c1 == '\v' or c1 == '\f' or c1 == '\r' then
-            self:skip_source_code(1)
-            is_ignore = true
-        elseif c1 == '\r' or c1 == '\n' then
-            self:skip_source_code(1)
-            self.line_num = self.line_num + 1
-            is_ignore = true
-        elseif c2 == '\r\n' or c2 == '\n\r' then
-            self:skip_source_code(2)
-            self.line_num = self.line_num + 1
-            is_ignore = true
-        else
-            break
-        end
+-- @param n int
+function lexer:get_cur_char(n)
+    return sub(self.src, self.index, self.index + n - 1)
+end
+
+function lexer:is_letter(cur)
+    local c = cur or self:get_cur_char(1)
+    return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or c == '_'
+end
+
+function lexer:is_white_space(cur)
+    local c = cur or self:get_cur_char(1)
+    return c == ' ' or c == '\t' or c == '\v' or c == '\f'
+end
+
+function lexer:is_next_line(cur)
+    local c = cur or self:get_cur_char(1)
+    -- windows \r\n
+    if self:get_cur_char(2) == '\r\n' then
+        self:set_next_index(1)
+        self:set_next_line(1)
+        return true
+    elseif c == '\n' or c == '\r' then
+        self:set_next_line(1)
+        return true
     end
-    return is_ignore
+    return false
+end
+
+function lexer:is_quote(cur)
+    local c = cur or self:get_cur_char(1)
+    return c == '"'
+end
+
+function lexer:is_note(cur)
+    local c = cur or self:get_cur_char(2)
+    return c == '\\\\'
 end
 
 function lexer:get_next_token()
-    if (self.nextTokenLineNum > 0) then
-        local token = self.next_token
-        local token_type = self.next_token_type
-        local line_num = self.next_token_line_num
-        self.line_num = self.next_token_line_num
-        self.next_token_line_num = 0
-        return token, token_type, line_num
-    end
-    return self:match_token()
-end
-
-function lexer:match_token()
-    if self:is_ignore() then
-        return self.line_num, const.TOKEN_IGNORED, 'Ignored'
-    end
-    if self.index >= #self.source_code then
-        return self.line_num, const.TOKEN_EOF, const.token_name_map[const.TOKEN_EOF]
-    end
-    local c1 = self:get_source_code(1)
-    local c2 = self:get_source_code(2)
-    if c1 == '$' then
-        self:skip_source_code(1)
-        return self.line_num, const.TOKEN_VAR_PREFIX, c1
-    elseif c1 == '(' then
-        self:skip_source_code(1)
-        return self.line_num, const.TOKEN_LEFT_PAREN, c1
-    elseif c1 == ')' then
-        self:skip_source_code(1)
-        return self.line_num, const.TOKEN_RIGHT_PAREN, c1
-    elseif c1 == '=' then
-        self:skip_source_code(1)
-        return self.line_num, const.TOKEN_EQUAL, c1
-    elseif c2 == '""' then
-        self:skip_source_code(2)
-        return self.line_num, const.TOKEN_DUOQUOTE, c2
-    elseif c1 == '"' then
-        self:skip_source_code(1)
-        return self.line_num, const.TOKEN_DUOQUOTE, c1
-    elseif c1 == "_" or self:is_letter(c1) then
-        local start = self.index
-        local finish = start
-        while (self.index <= #self.source_code)
-        do
-            finish = self.index
-            local c = self:get_source_code(1)
-            if c == "_" or self:is_letter() then
-                self:skip_source_code(1)
-            else
-                break
+    local outset = self.index
+    while self.index <= self.len do
+        local cur = self:get_cur_char(1)
+        if self:is_quote(cur) then
+            -- 字符串
+            self:set_next_index(1)
+            local is_escape = false
+            local temp = {}
+            while is_escape or ~self:is_quote() do
+                local c = self:get_cur_char(1)
+                if is_escape then
+                    is_escape = false
+                    insert(temp, #temp, c)
+                    self:set_next_index(1)
+                elseif c == '\\' then
+                    is_escape = true
+                    self:set_next_index(1)
+                else
+                    insert(temp, #temp, c)
+                    self:set_next_index(1)
+                end
             end
+            return temp
+        elseif self:is_note() then
+            -- 跳过注释
+            self:set_next_index(2)
+            while ~self:is_next_line() do
+                self:set_next_index(1)
+            end
+            return '\n'
+        elseif self:is_letter(cur) then
+            -- 英文字符
+            self:set_next_index(1)
+            while self:is_letter() do
+                self:set_next_index(1)
+            end
+            local ident = sub(self.src, outset, self.index)
+            if ident == 'if' then
+                return 'if'
+            end
+        elseif self:is_white_space(cur) then
+            -- 空白
+            self:set_next_index(1)
+            while self:is_white_space() do
+                self:set_next_index(1)
+            end
+            return ' '
+        elseif self:is_next_line(cur) then
+            -- 换行
+            self:set_next_index(1)
+            while self:is_next_line() do
+                self:set_next_index(1)
+            end
+            return '\n'
         end
-        return self.line_num, const.TOKEN_DUOQUOTE, sub(lexer.source_code, start, finish-1)
     end
-    self:skip_source_code(1)
-    -- @todo 错误抛出
 end
-
-function lexer:is_letter()
-    local c = self:get_source_code(1)
-    return c >= 'a' and c <= 'z' or c >= 'A' and c <= 'Z'
-end
-
-local source_code=[[$a = "pen pineapple apple pen."
-print($a)]]
-lexer:new_lexer(source_code)
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-lexer:match_token()
-_, _, xxx = lexer:match_token()
-print(xxx)
